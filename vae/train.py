@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader
 
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-INPUT_DIMENSIONS = 28*28
+INPUT_DIMENSIONS = 28*28 # 784
 HIDDEN_DIMENSIONS = 200
 LATENT_SPACE_DIMENSIONS = 20
 NUMBER_OF_EPOCHS = 20
