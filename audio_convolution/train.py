@@ -2,12 +2,11 @@
 import os
 
 # Change the current working directory
-new_directory = "/Users/michael/Uni/neural_networks/audio_convolution"
-os.chdir(new_directory)
+#new_directory = "/Users/michael/Uni/neural_networks/audio_convolution"
+#os.chdir(new_directory)
 import torch
 from torch import nn, optim
 from torch.utils.data import DataLoader
-from torchvision import datasets, transforms
 from tqdm import tqdm
 from model1 import Variational2DAutoEncoder  # Assuming the new model is saved in 'model.py'
 # Define preprocess functions
@@ -15,14 +14,35 @@ import numpy as np
 import torchaudio
 import torch.autograd.profiler as profiler
 
-DATA_FILES_WAV = '../autoencoder/audio_wav'
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+
+
+# Training parameters
+number_of_training_songs = 20
+number_of_validation_songs = 5
+number_of_testing_songs = 5
+segment_length_secs = 1
+sample_rate = 44100
+segment_to_song_coefficient = int(120 / segment_length_secs)
+
+DATA_FILES_WAV = 'raw_audio'
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+INPUT_DIMENSION = int(np.sqrt(segment_length_secs * sample_rate))
 
 
 def read_file(file_name):
-    audio, sample_rate = torchaudio.load(DATA_FILES_WAV + "/" + str(file_name) + ".wav")
-    return audio, sample_rate
+    try:
+        file_path = f"{DATA_FILES_WAV}/{file_name}.wav"
+
+        # Check if the file exists before attempting to load it
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"The file '{file_name}' does not exist.")
+
+        audio, sample_rate = torchaudio.load(file_path, format='wav')
+        return audio, sample_rate
+    except Exception as e:
+        print(f"Error loading file '{file_name}': {e}")
+        return None, None
 
 
 def segment_audio_return(audio_data, sample_rate, segment_length_secs):
@@ -45,7 +65,7 @@ def segment_audio_return(audio_data, sample_rate, segment_length_secs):
         segment = audio_data[start:end]
 
         # Reshape the segment into a 2D matrix (420, 420)
-        reshaped_segment = np.reshape(segment, (420, 420))
+        reshaped_segment = np.reshape(segment, (INPUT_DIMENSION, INPUT_DIMENSION))
 
         segments.append(reshaped_segment)
 
@@ -53,14 +73,8 @@ def segment_audio_return(audio_data, sample_rate, segment_length_secs):
     return segments
 
 
-# Training parameters
-number_of_training_songs = 25
-number_of_validation_songs = 5
-number_of_testing_songs = 5
-segment_length_secs = 4
-segment_to_song_coefficient = int(120 / segment_length_secs)
 
-#Get songs
+# %% Get songs
 songs = []
 
 for song_id in range(number_of_training_songs + number_of_validation_songs + number_of_testing_songs):
@@ -69,7 +83,7 @@ for song_id in range(number_of_training_songs + number_of_validation_songs + num
 
 print(f"Song count: {len(songs)}")
 
-# Get segments
+# %% Get segments
 song_segments = []
 print(f"Song count: {len(songs)}")
 
@@ -95,7 +109,8 @@ print(f"train_loader")
 train_loader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True)
 
 # Initialize the model, optimizer, and loss function
-INPUT_DIMENSIONS = 420 * 420
+
+INPUT_DIMENSIONS = INPUT_DIMENSION * INPUT_DIMENSION
 HIDDEN_DIMENSIONS = 200
 LATENT_SPACE_DIMENSIONS = 20
 LEARNING_RATE = 1e-4
