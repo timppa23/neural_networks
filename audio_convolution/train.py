@@ -65,7 +65,7 @@ def segment_audio_return(audio_data, sample_rate, segment_length_secs):
         end = start + segment_length_samples
         segment = audio_data[start:end]
 
-        # Reshape the segment into a 2D matrix (420, 420)
+        # Reshape the segment into a 2D matrix 
         reshaped_segment = np.reshape(segment, (INPUT_DIMENSION, INPUT_DIMENSION))
 
         segments.append(reshaped_segment)
@@ -119,7 +119,7 @@ LEARNING_RATE = 1e-4
 print(f"model")
 model = Variational2DAutoEncoder(INPUT_DIMENSIONS, HIDDEN_DIMENSIONS, LATENT_SPACE_DIMENSIONS).to(DEVICE)
 optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
-loss_function = nn.BCELoss(reduction="sum")
+loss_function = nn.MSELoss()
 
 # Checkpoint file path
 checkpoint_path = 'vae_convolutional_checkpoint.pth'
@@ -144,40 +144,38 @@ accumulation_steps = 4  # Gradient accumulation over 4 batches
 print(f"Starting training")
 
 # Profile memory usage
-with profiler.profile(use_cuda=True) as prof:
-    for epoch in range(NUMBER_OF_EPOCHS):
-        loop = tqdm(enumerate(train_loader))
-        for i, x in loop:
-            # Forward pass
-            print(f"Forward pass: {i}")
-            print(f"x shape: {x.shape[0]}")
-            print(f"x shape: {x.shape}")
-            x = torch.tensor(x, dtype=torch.float32).to(DEVICE).view(x.shape[0], 1, INPUT_DIMENSION, INPUT_DIMENSION)
-            print(f"x shape: {x.shape[0]}")
-            print(f"x shape: {x.shape}")
-            x_reconstructed, mu, sigma = model(x)
+# with profiler.profile(use_cuda=True) as prof:
+for epoch in range(NUMBER_OF_EPOCHS):
+    loop = tqdm(enumerate(train_loader), total=len(train_loader))
+    for i, x in loop:
+        # Forward pass
+        #print(f"Forward pass: {i}")
+        x = torch.tensor(x, dtype=torch.float32).to(DEVICE).view(x.shape[0], 1, INPUT_DIMENSION, INPUT_DIMENSION)
 
-            # Loss calculation
-            reconstruction_loss = loss_function(x_reconstructed, x)
-            KL_divergence = -torch.sum(1 + torch.log(sigma.pow(2)) - mu.pow(2) - sigma.pow(2))
-            print(f"KL_divergence: {KL_divergence}")
-            print(f"reconstruction_loss: {reconstruction_loss}")
+        x_reconstructed, mu, sigma = model(x)
 
-            # Backpropagation
-            print(f"Backpropagation: {i}")
-            loss = reconstruction_loss + KL_divergence
-            loss /= accumulation_steps  # Normalize loss for gradient accumulation
+        # Loss calculation
+        x = x.view(x.size(0), -1)
+        reconstruction_loss = loss_function(x_reconstructed, x)
+        KL_divergence = -torch.sum(1 + torch.log(sigma.pow(2)) - mu.pow(2) - sigma.pow(2))
+        #print(f"KL_divergence: {KL_divergence}")
+        #print(f"reconstruction_loss: {reconstruction_loss}")
+
+        # Backpropagation
+        #print(f"Backpropagation: {i}")
+        loss = reconstruction_loss + KL_divergence
+        loss /= accumulation_steps  # Normalize loss for gradient accumulation
+        optimizer.zero_grad()
+        loss.backward()
+
+        # Accumulate gradients
+        if (i + 1) % accumulation_steps == 0:
+            optimizer.step()
             optimizer.zero_grad()
-            loss.backward()
+        loop.set_postfix(loss=loss.item())
 
-            # Accumulate gradients
-            if (i + 1) % accumulation_steps == 0:
-                optimizer.step()
-                optimizer.zero_grad()
-            loop.set_postfix(loss=loss.item())
-
-            # Print memory usage profile
-            print(prof.key_averages().table(sort_by="self_cuda_memory_usage", row_limit=10))
+        # Print memory usage profile
+        #print(prof.key_averages().table(sort_by="self_cuda_memory_usage", row_limit=10))
 
     # Save checkpoint if the current loss is better than the best loss so far
     if loss.item() < best_loss:
@@ -194,4 +192,44 @@ with profiler.profile(use_cuda=True) as prof:
 torch.save(model.state_dict(), 'vae_convolutional_final.pth')
 
 
+# %%
+# Take 32 segments from the validation set
+x_validation_segments = validation_data[:32]  # Assuming validation_data is a list of segments
+
+# Convert each segment to a tensor and ensure its shape matches INPUT_DIMENSION
+# This assumes that each segment is already in the shape (INPUT_DIMENSION, INPUT_DIMENSION)
+for i in range(len(x_validation_segments)):
+    x_validation_segments[i] = torch.tensor(x_validation_segments[i], dtype=torch.float32).to(DEVICE)
+
+# Stack the segments along a new dimension to form a batch
+x_validation = torch.stack(x_validation_segments)
+
+# Ensure the shape is (32, 1, INPUT_DIMENSION, INPUT_DIMENSION)
+x_validation = x_validation.view(32, 1, INPUT_DIMENSION, INPUT_DIMENSION)
+
+
+# %% Forward pass through the model
+
+import soundfile as sf
+
+with torch.no_grad():
+    mean, logvariance = model.encode(x_validation)
+    z_reparametrize = model.reparameterize(mean, logvariance)
+    x_reconstructed = model.decode(z_reparametrize)
+    x_reconstructed = x_reconstructed.view(x_reconstructed.size(0), -1)
+
+# Convert reconstructed tensor segments to audio waveform
+reconstructed_audio = x_reconstructed.cpu().numpy()
+
+# Here, you need to reshape and concatenate the segments to get a continuous audio stream
+# You can use numpy's concatenate function for this if needed
+
+# Convert the concatenated reconstructed audio to the waveform
+reconstructed_waveform = reconstructed_audio.reshape(-1)
+
+# Save the reconstructed audio as a .wav file
+sf.write("reconstructed_audio1.wav", reconstructed_waveform, sample_rate)
+
+# (Optional) If you want to play the reconstructed audio, you can use torchaudio
+# torchaudio.play(torch.tensor(reconstructed_waveform), sample_rate)
 # %%
