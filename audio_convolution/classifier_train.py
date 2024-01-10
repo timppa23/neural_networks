@@ -193,22 +193,55 @@ for epoch in range(NUM_EPOCHS):
 
 
 
-  # %% test
-        
+# %% Set the model to evaluation mode
+from sklearn.metrics import accuracy_score
+
+# Set the model to evaluation mode
 model.eval()
-correct = 0
-total = 0
+
+all_predictions = []
+all_targets = []
 
 with torch.no_grad():
     for data, target in test_loader:
         data, target = data.to(DEVICE), target.to(DEVICE)
-        data = torch.tensor(data, dtype=torch.float32).to(DEVICE).view(data.shape[0], 1, INPUT_DIMENSION, INPUT_DIMENSION)
+        
+        # Ensure the data has the correct shape
+        data = data.view(data.shape[0], 1, INPUT_DIMENSION, INPUT_DIMENSION)
 
         raw_scores = model(data)
         probabilities = torch.sigmoid(raw_scores)
-        predictions = (probabilities > 0.5).float()  
-        print(f"output: {predictions.data}")
+        
+        # Convert probabilities to binary predictions (0 or 1)
+        predictions = (probabilities > 0.5).float()
+        
+        # Collect predictions and targets for later evaluation
+        all_predictions.append(predictions.cpu().numpy())
+        all_targets.append(target.cpu().numpy())
 
+# Concatenate predictions and targets
+all_predictions = np.concatenate(all_predictions)
+all_targets = np.concatenate(all_targets)
 
-print(f"Accuracy on test data: {(100 * correct / total):.2f}%")
+# Calculate accuracy using scikit-learn
+accuracy = accuracy_score(all_targets, all_predictions)
+print(f"Accuracy on test data: {accuracy * 100:.2f}%")
 # %%
+from sklearn.metrics import confusion_matrix
+cm = confusion_matrix(all_targets, all_predictions)
+print(cm)
+
+from sklearn.metrics import classification_report
+print(classification_report(all_targets, all_predictions))
+
+from sklearn.metrics import mean_absolute_error, mean_squared_error
+mae = mean_absolute_error(all_targets, all_predictions)
+mse = mean_squared_error(all_targets, all_predictions)
+print(mae)
+print(mse)
+# %%
+from sklearn.metrics import precision_recall_curve
+precision, recall, _ = precision_recall_curve(all_targets, all_predictions)
+print(precision)
+print(recall)
+# %%   

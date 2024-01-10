@@ -8,7 +8,8 @@ import torch
 from torch import nn, optim
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-from model1 import Variational2DAutoEncoder  # Assuming the new model is saved in 'model.py'
+print(f"current working directory: {os.getcwd()}")
+from variational_autoencoder import Variational2DAutoEncoder 
 # Define preprocess functions
 import numpy as np
 import torchaudio
@@ -21,7 +22,7 @@ import torch.autograd.profiler as profiler
 number_of_training_songs = 20
 number_of_validation_songs = 5
 number_of_testing_songs = 5
-segment_length_secs = 1
+segment_length_secs = 0.25
 sample_rate = 44100
 segment_to_song_coefficient = int(120 / segment_length_secs)
 
@@ -74,7 +75,6 @@ def segment_audio_return(audio_data, sample_rate, segment_length_secs):
 
 
 
-# %% Get songs
 songs = []
 
 for song_id in range(number_of_training_songs + number_of_validation_songs + number_of_testing_songs):
@@ -83,7 +83,7 @@ for song_id in range(number_of_training_songs + number_of_validation_songs + num
 
 print(f"Song count: {len(songs)}")
 
-# %% Get segments
+
 song_segments = []
 print(f"Song count: {len(songs)}")
 
@@ -104,15 +104,16 @@ test_data = song_segments[
             (number_of_training_songs + number_of_validation_songs) * segment_to_song_coefficient:]
 
 # %% Create DataLoader for training
-BATCH_SIZE = 16  # Smaller batch size
+BATCH_SIZE = 32  # Smaller batch size
 print(f"train_loader")
 train_loader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True)
 
 # Initialize the model, optimizer, and loss function
-
-INPUT_DIMENSIONS = INPUT_DIMENSION * INPUT_DIMENSION
-HIDDEN_DIMENSIONS = 200
-LATENT_SPACE_DIMENSIONS = 20
+print(f"Input dimension: {INPUT_DIMENSION}")
+INPUT_DIMENSIONS = INPUT_DIMENSION
+print(f"New input dimension: {INPUT_DIMENSIONS}")
+HIDDEN_DIMENSIONS = 128
+LATENT_SPACE_DIMENSIONS = 32
 LEARNING_RATE = 1e-4
 
 print(f"model")
@@ -149,7 +150,11 @@ with profiler.profile(use_cuda=True) as prof:
         for i, x in loop:
             # Forward pass
             print(f"Forward pass: {i}")
-            x = torch.tensor(x, dtype=torch.float32).to(DEVICE).view(x.shape[0], 1, 420, 420)
+            print(f"x shape: {x.shape[0]}")
+            print(f"x shape: {x.shape}")
+            x = torch.tensor(x, dtype=torch.float32).to(DEVICE).view(x.shape[0], 1, INPUT_DIMENSION, INPUT_DIMENSION)
+            print(f"x shape: {x.shape[0]}")
+            print(f"x shape: {x.shape}")
             x_reconstructed, mu, sigma = model(x)
 
             # Loss calculation
