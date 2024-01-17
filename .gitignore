@@ -1,3 +1,7 @@
 convolutional_nn/__pycache/
 __pycache__/
 neural_network/__pycache__/
+autoencoder/audio/
+autoencoder/audio_wav/
+dataset/
+vae/output/
