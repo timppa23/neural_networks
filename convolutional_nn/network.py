@@ -1,3 +1,4 @@
+# %%
 import numpy as np
 from keras.datasets import mnist
 from keras.utils import to_categorical
@@ -23,6 +24,7 @@ def preprocess_data(x, y, limit):
     y = y.reshape(len(y), 2, 1)
     return x, y
 
+# %% 
 
 (x_train, y_train), (x_test, y_test) = mnist.load_data()
 x_train, y_train = preprocess_data(x_train, y_train, 1000)
@@ -91,3 +93,4 @@ for x, y in zip(x_test, y_test):
     print(f"pred: {np.argmax(output)}, true: {np.argmax(y)}")
     if np.argmax(output) != np.argmax(y):
         print("FALSE")
+# %%
