@@ -1,36 +1,43 @@
-from tensorflow.keras.layers import Input, Dense
-from tensorflow.keras.models import Model, Sequential
+import torch
+import torch.nn.functional as F
+from torch import nn
 
-NUMBER_OF_FIRST_HIDDEN_LAYER_NODES = 8400
-NUMBER_OF_SECOND_HIDDEN_LAYER_NODES = 3440
-LATENT_SPACE_DIMENSIONS = 2800
+class Autoencoder(nn.Module):
+    def __init__(self, input_dimensions, first_layer_hidden_dimensions=8400, second_layer_hidden_dimensions=3440, latent_space_dimensions=2800):
+        super().__init__()
 
-class Autoencoder(Model):
-    def __init__(self, input_length):
-        super(Autoencoder, self).__init__()
-        
+        self.input_dimensions = input_dimensions
+
         # Encoder
-        self.encoder = Sequential([
-            Input(shape=(input_length,)),  # Input layer
-            Dense(NUMBER_OF_FIRST_HIDDEN_LAYER_NODES, activation='relu'),  # First encoder layer
-            Dense(NUMBER_OF_SECOND_HIDDEN_LAYER_NODES, activation='relu'),   # Second encoder layer
-            Dense(LATENT_SPACE_DIMENSIONS, activation='relu')  # Latent space layer
-        ])
+        self.first_hidden_layer_encoder = nn.Linear(in_features=input_dimensions, out_features=first_layer_hidden_dimensions)
+        self.second_hidden_layer_encoder = nn.Linear(in_features=first_layer_hidden_dimensions, out_features=second_layer_hidden_dimensions)
+        self.bottleneck_layer = nn.Linear(in_features=second_layer_hidden_dimensions, out_features=latent_space_dimensions)
+       
 
         # Decoder
-        self.decoder = Sequential([
-            Input(shape=(LATENT_SPACE_DIMENSIONS,)),  # Input layer for decoder
-            Dense(NUMBER_OF_SECOND_HIDDEN_LAYER_NODES, activation='relu'),  # Second decoder layer
-            Dense(NUMBER_OF_FIRST_HIDDEN_LAYER_NODES, activation='relu'),  # Second decoder layer
-            Dense(input_length, activation=None)  # Output layer
-        ])
+        self.second_hidden_layer_decoder = nn.Linear(in_features=latent_space_dimensions, out_features=second_layer_hidden_dimensions)
+        self.first_hidden_layer_decoder = nn.Linear(in_features=second_layer_hidden_dimensions, out_features=first_layer_hidden_dimensions)
+        self.reconstruction_layer1 = nn.Linear(in_features=first_layer_hidden_dimensions, out_features=input_dimensions)
 
-    def call(self, inputs):
-        encoded = self.encoder(inputs)
-        decoded = self.decoder(encoded)
-        return decoded
 
-""" 
-# Create an instance of the Autoencoder
-autoencoder = Autoencoder(latent_space_dimensions=32, input_length=256)
- """
+        self.relu_activation = nn.ReLU()
+
+    def encode(self, x):
+        x = self.relu_activation(self.first_hidden_layer_encoder(x))
+        x = self.relu_activation(self.second_hidden_layer_encoder(x))
+        x = self.relu_activation(self.bottleneck_layer(x))
+
+        return x
+
+    def decode(self, z):
+        x = self.relu_activation(self.second_hidden_layer_decoder(z))
+        x = self.relu_activation(self.first_hidden_layer_decoder(x))
+        x = self.reconstruction_layer1(x)
+
+        return x
+
+
+    def forward(self, x):
+        z = self.encode(x)
+        x_reconstructed = self.decode(z)
+        return x_reconstructed
