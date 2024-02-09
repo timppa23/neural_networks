@@ -5,3 +5,4 @@ autoencoder/audio/
 autoencoder/audio_wav/
 dataset/
 vae/output/
+audio_convolution/raw_audio/
