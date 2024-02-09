@@ -3,7 +3,14 @@ __pycache__/
 neural_network/__pycache__/
 autoencoder/audio/
 autoencoder/audio_wav/
+autoencoder/raw_audio/
 dataset/
 vae/output/
+audio_convolution/reconstructed_audio*.wav
+audio_convolution/x_validation_segments*.wav
+autoencoder/reconstructed_audio*.wav
+autoencoder/x_validation_segments*.wav
+audio_convolution/*.pth
+autoencoder/*.pth
 audio_convolution/raw_audio/
 autoencoder/raw_audio/
