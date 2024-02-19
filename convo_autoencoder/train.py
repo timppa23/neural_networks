@@ -243,84 +243,6 @@ for epoch in range(NUMBER_OF_EPOCHS):
 
 
     
- # %%
-# Take 32 segments from the validation set
-x_validation_segments = test_data[:32]  # Assuming validation_data is a list of segments
-
-# Convert each segment to a tensor and ensure its shape matches INPUT_DIMENSION
-# This assumes that each segment is already in the shape (INPUT_DIMENSION, INPUT_DIMENSION)
-for i in range(len(x_validation_segments)):
-    x_validation_segments[i] = torch.tensor(x_validation_segments[i], dtype=data_type).to(DEVICE)
-
-# Stack the segments along a new dimension to form a batch
-x_validation = torch.stack(x_validation_segments)
-
-# Ensure the shape is (32, 1, INPUT_DIMENSION, INPUT_DIMENSION)
-x_validation = x_validation.view(32, 1, INPUT_DIMENSION)
-
-
-# %% Forward pass through the model
-
-
-model.eval()
-with torch.no_grad():
-    z = model.encode(x_validation)
-    x_reconstructed = model.decode(z)
-    x_reconstructed = x_reconstructed.view(x_reconstructed.size(0), -1)
-
-# Convert reconstructed tensor segments to audio waveform
-reconstructed_audio = x_reconstructed
-
-# Here, you need to reshape and concatenate the segments to get a continuous audio stream
-# You can use numpy's concatenate function for this if needed
-
-# Convert the concatenated reconstructed audio to the waveform
-reconstructed_waveform = torch.fft.irfft(reconstructed_audio).cpu().numpy().reshape(-1)
-validation_waveform = torch.fft.irfft(x_validation).cpu().numpy().reshape(-1)
-#%%
-
-validation_waveform.shape
-
-#%%
-
-# Save the reconstructed audio as a .wav file
-sf.write("reconstructed_audio5.wav", reconstructed_waveform, (sample_rate // 10))
-sf.write("x_validation_segments5.wav", validation_waveform, (sample_rate // 10))
- # %%
-
-original_song = songs[85][0].reshape(-1)
-
-# %%
-sf.write("original_song5.wav", original_song, sample_rate )
-# %%
-
-resampled_song = resampled_songs[85][0].mean(axis=0)
-
-# %%
-sf.write("resampled_song5.wav", resampled_song, (sample_rate // 10) )
-# %%
-
-resampled_song_rfft =  torch.fft.rfft(resampled_song)
-resampled_song_dft =  torch.fft.irfft(resampled_song_rfft)
-sf.write("resampled_song_dft_5.wav", resampled_song_dft, (sample_rate // 10) )
-resampled_song_dft.shape
-# %%
-
-flat_test_data = []
-
-test_loader = DataLoader(test_data[:24], batch_size=BATCH_SIZE, shuffle=False)
-for tensor in test_loader:
-    # Extract numerical values from the tensor and append to the flat_test_data list
-    test_x = torch.tensor(tensor, dtype=data_type).to(DEVICE).view(24, 1, INPUT_DIMENSION)
-
-test_x.shape
-#%%
-# Convert the list to a NumPy array
-test_song = test_x.reshape(-1)
-test_song.shape
-# %%
-sf.write("test_song6.wav", test_song.cpu().numpy(), (sample_rate // 10) )
-
 # %%
 
 
@@ -332,24 +254,19 @@ with torch.no_grad():
     val_loop = tqdm(enumerate(test_loader), total=len(test_loader))
     for i, x in val_loop:
         # Forward pass
-        x = torch.tensor(x, dtype=data_type).to(DEVICE).view(x.shape[0], 1, INPUT_DIMENSION)
+        x = x.clone().detach().to(DEVICE).view(x.shape[0], 1, INPUT_DIMENSION, INPUT_DIMENSION)
         z = model.encode(x)
         x_reconstructed = model.decode(z)
-        x_reconstructed = x_reconstructed.view(x_reconstructed.size(0), -1)
 
-# Convert reconstructed tensor segments to audio waveform
-reconstructed_audio = x_reconstructed
 
 # Here, you need to reshape and concatenate the segments to get a continuous audio stream
 # You can use numpy's concatenate function for this if needed
 
 #%%
 # Convert the concatenated reconstructed audio to the waveform
-reconstructed_waveform = irfft(reconstructed_audio.cpu().numpy()).reshape(-1)
-validation_waveform = irfft(x.cpu().numpy() ).reshape(-1)
+reconstructed_waveform = x_reconstructed.view(x_reconstructed.size(0), -1).cpu().numpy().reshape(-1)
+validation_waveform = x.view(x_reconstructed.size(0), -1).cpu().numpy().reshape(-1)
 #%%  
-
-validation_waveform.shape
 
 reconstruction_loss = loss_function(x_reconstructed, x)
 print(f"reconstruction loss: {reconstruction_loss}")
@@ -358,6 +275,6 @@ print(f"reconstruction loss: {reconstruction_loss}")
 #%%
 
 # Save the reconstructed audio as a .wav file
-sf.write("reconstructed_audio1.wav", reconstructed_waveform, (sample_rate // 10))
-sf.write("x_validation_segments1.wav", validation_waveform, (sample_rate // 10) )
+sf.write("reconstructed_audio2.wav", reconstructed_waveform, (sample_rate // 10))
+sf.write("x_validation_segments2.wav", validation_waveform, (sample_rate // 10) )
  # %%

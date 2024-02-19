@@ -28,7 +28,7 @@ first_layer_hidden_dimensions=8400
 second_layer_hidden_dimensions=3440
 latent_space_dimensions=2800
 
-DATA_FILES_WAV = 'raw_audio'
+DATA_FILES_WAV = 'audio_wav'
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
@@ -357,6 +357,6 @@ print(f"reconstruction loss: {reconstruction_loss}")
 #%%
 
 # Save the reconstructed audio as a .wav file
-sf.write("reconstructed_audio15.wav", reconstructed_waveform, (sample_rate // 10))
-sf.write("x_validation_segments15.wav", validation_waveform, (sample_rate // 10) )
+sf.write("reconstructed_audio1.wav", reconstructed_waveform, (sample_rate // 10))
+sf.write("x_validation_segments1.wav", validation_waveform, (sample_rate // 10) )
  # %%

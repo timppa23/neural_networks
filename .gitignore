@@ -6,10 +6,9 @@ autoencoder/audio_wav/
 autoencoder/raw_audio/
 dataset/
 vae/output/
-audio_convolution/reconstructed_audio*.wav
-audio_convolution/x_validation_segments*.wav
-autoencoder/reconstructed_audio*.wav
-autoencoder/x_validation_segments*.wav
+audio_convolution/*.wav
+autoencoder/*.wav
+convo_autoencoder/*.wav
 audio_convolution/*.pth
 autoencoder/*.pth
 audio_convolution/raw_audio/

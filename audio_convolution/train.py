@@ -31,7 +31,7 @@ checkpoint_path = 'vae_checkpoint_dft_8400_3440_2800_sigmoid.pth'
 final_path = 'vae_final_dft_8400_3440_2800_sigmoid.pth'
 
 
-DATA_FILES_WAV = '../autoencoder/raw_audio'
+DATA_FILES_WAV = '../autoencoder/audio_wav'
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 #INPUT_DIMENSION = int(np.sqrt(segment_length_secs * lower_sample_rate))
 
@@ -75,8 +75,10 @@ def segment_audio_return(audio_data, sample_rate, segment_length_secs):
 
         # Reshape the segment into a 2D matrix 
         #reshaped_segment = np.reshape(rfft(segment.numpy()), (INPUT_DIMENSION, INPUT_DIMENSION))
-        reshaped_segment = normalize_data_16bit(rfft(segment.numpy()))
+        # reshaped_segment = normalize_data_16bit(rfft(segment.numpy()))
         # reshaped_segment = rfft(segment.numpy())
+        reshaped_segment = segment.numpy()
+
 
         segments.append(reshaped_segment)
 
@@ -182,8 +184,8 @@ songs = []
 #resampled_songs = []
 #song_segments = []
 
-checkpoint_path = 'vae_checkpoint_dft_8400_5800_3400_2800_v5.pth'
-final_path = 'vae_final_dft_8400_5800_3400_2800_v5.pth'
+checkpoint_path = 'vae_checkpoint_dft_v6.pth'
+final_path = 'vae_final_dft_v6.pth'
 
 # %% Create DataLoader for training
 BATCH_SIZE = 256
@@ -199,7 +201,7 @@ print(f"New input dimension: {INPUT_DIMENSIONS}")
 HIDDEN_DIMENSIONS1 = 8400
 HIDDEN_DIMENSIONS2 = 5800
 HIDDEN_DIMENSIONS3 = 3400
-LATENT_SPACE_DIMENSIONS = 2800
+LATENT_SPACE_DIMENSIONS = 1400
 LEARNING_RATE = 1e-5
 NUMBER_OF_EPOCHS = 500
 BETA_VALUE = 1
@@ -214,7 +216,7 @@ data_type = torch.float32
 optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 loss_function = nn.MSELoss()
 
-#%%
+ #%%
 # Check if a checkpoint file exists
 if os.path.exists(checkpoint_path):
     # Load the checkpoint
@@ -241,9 +243,9 @@ def get_gradient_norm(model):
     return total_norm
 
  #%%
-NUMBER_OF_EPOCHS = 500 
-BETA_VALUE = 1
-ALPHA_VALUE = 1e10
+#NUMBER_OF_EPOCHS = 500 
+#BETA_VALUE = 1
+#ALPHA_VALUE = 1e10
 best_loss = float('inf')
 
 # %% Start training
@@ -403,24 +405,14 @@ validation_reversed = reverse_normalization_16bit(x.cpu().numpy())
 # Convert the concatenated reconstructed audio to the waveform
 reconstructed_waveform = irfft(reconstructed_audio_reversed).reshape(-1)
 validation_waveform = irfft(validation_reversed).reshape(-1)
-#%%  
-
-validation_waveform.shape
-
-reconstruction_loss = loss_function(x_reconstructed, x)
-print(f"reconstruction loss: {reconstruction_loss}")
--torch.sum(1 + torch.log(sigma.pow(2)) - mu.pow(2) - sigma.pow(2))
-print(f"KL divergence: {KL_divergence}")
-loss = reconstruction_loss + (BETA_VALUE * KL_divergence)
-print(f"loss: {loss}")
 
 #%%
 
 # Save the reconstructed audio as a .wav file
 # reconstruction loss: 589.0449829101562
 # KL divergence: 0.0060395002365112305
-sf.write("reconstructed_audio11.wav", reconstructed_waveform, (sample_rate // 10))
-sf.write("x_validation_segments11.wav", validation_waveform, (sample_rate // 10) )
+sf.write("reconstructed_audio.wav", reconstructed_waveform, (sample_rate // 10))
+sf.write("x_validation_segments.wav", validation_waveform, (sample_rate // 10) )
 
  #  %%
  
