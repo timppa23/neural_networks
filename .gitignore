@@ -9,7 +9,10 @@ vae/output/
 audio_convolution/*.wav
 autoencoder/*.wav
 convo_autoencoder/*.wav
+3d_audio_convolution/*.wav
 audio_convolution/*.pth
 autoencoder/*.pth
+convo_autoencoder/*.pth
+3d_audio_convolution/*.pth
 audio_convolution/raw_audio/
 autoencoder/raw_audio/

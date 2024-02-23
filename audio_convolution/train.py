@@ -31,7 +31,7 @@ checkpoint_path = 'vae_checkpoint_dft_8400_3440_2800_sigmoid.pth'
 final_path = 'vae_final_dft_8400_3440_2800_sigmoid.pth'
 
 
-DATA_FILES_WAV = '../autoencoder/audio_wav'
+DATA_FILES_WAV = '../autoencoder/raw_audio'
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 #INPUT_DIMENSION = int(np.sqrt(segment_length_secs * lower_sample_rate))
 

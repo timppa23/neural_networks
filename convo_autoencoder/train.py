@@ -23,11 +23,11 @@ segment_length_secs = 10
 sample_rate = 44100
 lower_sample_rate = sample_rate // 10
 segment_to_song_coefficient = int(120 / segment_length_secs)
-checkpoint_path = 'convo_autoencoder.pth'
-final_path = 'convo_autoencoder_final.pth'
+checkpoint_path = 'convo_autoencoder_dft.pth'
+final_path = 'convo_autoencoder_final_dft.pth'
 
 
-DATA_FILES_WAV = '../autoencoder/audio_wav'
+DATA_FILES_WAV = '../autoencoder/raw_audio'
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 INPUT_DIMENSION = int(np.sqrt(segment_length_secs * lower_sample_rate))
 
@@ -74,7 +74,7 @@ def segment_audio_return(audio_data, sample_rate, segment_length_secs):
 
         # segments.append(rfft(segment.numpy()))
         # segments.append(segment.numpy())
-        segments.append(np.reshape(segment.numpy(), (INPUT_DIMENSION, INPUT_DIMENSION)))
+        segments.append(np.reshape(rfft(segment.numpy()), (INPUT_DIMENSION, INPUT_DIMENSION)))
 
     print(f"returning count: {segments[0].shape}")
     print(f"returning count: {len(segments)}")
@@ -132,7 +132,7 @@ songs = []
 # song_segments = []
 
 # %%
-BATCH_SIZE = 64
+BATCH_SIZE = 32
 print(f"train_loader")
 train_loader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True)
 validation_loader = DataLoader(validation_data, batch_size=BATCH_SIZE, shuffle=False)
@@ -141,7 +141,7 @@ test_loader = DataLoader(test_data, batch_size=BATCH_SIZE, shuffle=False)
 # Initialize the model, optimizer, and loss function
 print(f"Input dimension: {INPUT_DIMENSION}")    
 LEARNING_RATE = 1e-5
-NUMBER_OF_EPOCHS = 50
+NUMBER_OF_EPOCHS = 500
 
 print(f"model")
 model = ConvoAutoencoder(INPUT_DIMENSION, first_layer_hidden_dimensions=8400, second_layer_hidden_dimensions=3440, latent_space_dimensions=2800).to(DEVICE)
@@ -170,7 +170,7 @@ else:
     best_loss = float('inf')
 
 # %%
-NUMBER_OF_EPOCHS = 200
+NUMBER_OF_EPOCHS = 500
 epoch = 0           
 
 #%%
@@ -190,7 +190,7 @@ for epoch in range(NUMBER_OF_EPOCHS):
         x_reconstructed = model(x)
 
         # Loss calculation
-        reconstruction_loss = F.mse_loss(x_reconstructed, x)
+        reconstruction_loss = loss_function(x_reconstructed, x)
 
         # Backpropagation
         loss = reconstruction_loss
@@ -220,7 +220,7 @@ for epoch in range(NUMBER_OF_EPOCHS):
             x_reconstructed = model(x)
 
             # Loss calculation
-            reconstruction_loss = F.mse_loss(x_reconstructed, x)
+            reconstruction_loss = loss_function(x_reconstructed, x)
             loss = reconstruction_loss
 
             total_val_loss += loss.item() / x.size(0)
@@ -228,7 +228,7 @@ for epoch in range(NUMBER_OF_EPOCHS):
             val_loop.set_postfix(loss=total_val_loss / (i + 1))
     
         avg_val_loss = total_val_loss / len(validation_loader)
-        print(f"Epoch [{epoch + 1}/{NUMBER_OF_EPOCHS}], AVG Validation Loss: {avg_val_loss:.4f}, reconstruction_loss: {reconstruction_loss} ")
+        print(f"Epoch [{epoch + 1}/{NUMBER_OF_EPOCHS}], AVG Validation Loss: {avg_val_loss:.4f}")
         # Save checkpoint if the current loss is better than the best loss so far
         if avg_val_loss < best_loss:
             print(f"Saving checkpoint. Loss: {avg_val_loss}")
@@ -264,17 +264,20 @@ with torch.no_grad():
 
 #%%
 # Convert the concatenated reconstructed audio to the waveform
-reconstructed_waveform = x_reconstructed.view(x_reconstructed.size(0), -1).cpu().numpy().reshape(-1)
-validation_waveform = x.view(x_reconstructed.size(0), -1).cpu().numpy().reshape(-1)
-#%%  
+reconstructed_waveform = irfft(x_reconstructed.view(x_reconstructed.size(0), -1).cpu().numpy()).reshape(-1)
+validation_waveform = irfft(x.view(x_reconstructed.size(0), -1).cpu().numpy()).reshape(-1)
+ 
+
+reconstruction_loss = loss_function(x_reconstructed.view(x_reconstructed.size(0), -1).reshape(-1), x.view(x.size(0), -1).reshape(-1))
+print(f"reconstruction loss: {reconstruction_loss.item() / x.size(0)}")
 
 reconstruction_loss = loss_function(x_reconstructed, x)
-print(f"reconstruction loss: {reconstruction_loss}")
+print(f"reconstruction loss: {reconstruction_loss.item()}")
 
 
 #%%
 
 # Save the reconstructed audio as a .wav file
-sf.write("reconstructed_audio2.wav", reconstructed_waveform, (sample_rate // 10))
-sf.write("x_validation_segments2.wav", validation_waveform, (sample_rate // 10) )
+sf.write("reconstructed_audio5.wav", reconstructed_waveform, (sample_rate // 10))
+sf.write("x_validation_segments5.wav", validation_waveform, (sample_rate // 10) )
  # %%

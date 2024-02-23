@@ -7,7 +7,7 @@ class ConvoAutoencoder(nn.Module):
         super().__init__()
 
         middle_channels = 2
-        out_channels = 4
+        out_channels = 1
         conv1_params = [5,2,0]
         conv2_params = [5,2,0]
         K = conv1_params[0]
@@ -19,7 +19,7 @@ class ConvoAutoencoder(nn.Module):
 
         self.out_channels = out_channels
         self.out_feats1 = out_feats1
-        convo_out_feats = out_feats1 * out_feats1 * 4
+        convo_out_feats = out_feats1 * out_feats1 * out_channels
         self.out_feats2 = out_feats2
         self.input_dimensions = input_dimensions
         # print(f"out_feats2{out_feats2}")
