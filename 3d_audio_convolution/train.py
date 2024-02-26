@@ -59,11 +59,11 @@ NUM_OF_FRAMES = train_data[0].shape[0]
 HIDDEN_DIMENSIONS1 = 8400
 HIDDEN_DIMENSIONS2 = 5400
 HIDDEN_DIMENSIONS3 = 3400
-LATENT_SPACE_DIMENSIONS = 2800
+LATENT_SPACE_DIMENSIONS = 1400
 LEARNING_RATE = 1e-5
 NUMBER_OF_EPOCHS = 500
 BETA_VALUE = 1
-ALPHA_VALUE = 2
+ALPHA_VALUE = 1
 
 train_loader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=False)
 validation_loader = DataLoader(validation_data, batch_size=BATCH_SIZE, shuffle=False)
@@ -107,11 +107,13 @@ for epoch in range(NUMBER_OF_EPOCHS):
         # Forward pass
         x = x.clone().detach().to(DEVICE).view(x.shape[0], 1, NUM_OF_FRAMES, INPUT_DIMENSION, INPUT_DIMENSION)
 
-        x_reconstructed, mu, sigma = model(x)
+        x_reconstructed, mu, logvar = model(x)
 
         # Loss calculation
         reconstruction_loss = loss_function(x_reconstructed, x)
-        KL_divergence = -0.5 * torch.sum(1 + torch.log(sigma.pow(2)) - mu.pow(2) - sigma.pow(2))
+        #KL_divergence = -0.5 * torch.sum(1 + torch.log(sigma.pow(2)) - mu.pow(2) - sigma.pow(2))
+        # KL Divergence loss
+        KL_divergence = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
         # Backpropagation
         loss = (ALPHA_VALUE * reconstruction_loss) + (BETA_VALUE * KL_divergence)
 
@@ -122,16 +124,16 @@ for epoch in range(NUMBER_OF_EPOCHS):
         #print(f"Gradient Norm: {grad_norm}")
         optimizer.step()
         
-        total_train_loss += loss.item() / x.size(0)
+        total_train_loss += loss.item()
         loop.set_description(f"Epoch train [{epoch+1}/{NUMBER_OF_EPOCHS}]")
-        loop.set_postfix(loss=total_train_loss / (i + 1), KL_divergence={(BETA_VALUE * KL_divergence.item()) / x.size(0)}, reconstruction_loss= {(ALPHA_VALUE * reconstruction_loss.item()) / x.size(0)})
+        loop.set_postfix(loss=total_train_loss / (i + 1), KL_divergence={(BETA_VALUE * KL_divergence)}, reconstruction_loss= {(ALPHA_VALUE * reconstruction_loss.item())})
 
 
     if epoch % 10 == 0:
         # print(f"x values: {x[0]}")
         # print(f"x_reconstructed values: {x_reconstructed[0]}")
         print(f"mu values: {calculate_grouped_value_count(mu[0])}")
-        print(f"sigma values: {calculate_grouped_value_count(sigma[0])}")
+        print(f"sigma values: {calculate_grouped_value_count(logvar[0])}")
         print(f" grouped values x: {calculate_grouped_value_count(x[0])}")
         print(f" grouped values x_reconstructed: {calculate_grouped_value_count(x_reconstructed[0])}")
         torch.save({
@@ -150,16 +152,18 @@ for epoch in range(NUMBER_OF_EPOCHS):
         for i, x in val_loop:
             # Forward pass
             x = x.clone().detach().to(DEVICE).view(x.shape[0], 1, NUM_OF_FRAMES, INPUT_DIMENSION, INPUT_DIMENSION)
-            x_reconstructed, mu, sigma = model(x)
+            x_reconstructed, mu, logvar = model(x)
 
             # Loss calculation
             reconstruction_loss = loss_function(x_reconstructed, x)
-            KL_divergence = -0.5 * torch.sum(1 + torch.log(sigma.pow(2)) - mu.pow(2) - sigma.pow(2))
+            #KL_divergence = -0.5 * torch.sum(1 + torch.log(sigma.pow(2)) - mu.pow(2) - sigma.pow(2))
+            # KL Divergence loss
+            KL_divergence = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
             loss = (ALPHA_VALUE * reconstruction_loss) + (BETA_VALUE * KL_divergence)
 
-            total_val_loss += loss.item() / x.size(0)
+            total_val_loss += loss.item()
             val_loop.set_description(f"Epoch validation [{epoch+1}/{NUMBER_OF_EPOCHS}]")
-            val_loop.set_postfix(loss=total_val_loss / (i + 1), KL_divergence= {(BETA_VALUE * KL_divergence.item()) / x.size(0)}, reconstruction_loss= {(ALPHA_VALUE * reconstruction_loss.item()) / x.size(0)})
+            val_loop.set_postfix(loss=total_val_loss / (i + 1), KL_divergence= {(BETA_VALUE * KL_divergence)}, reconstruction_loss= {(ALPHA_VALUE * reconstruction_loss.item())})
     
         avg_val_loss = total_val_loss / len(validation_loader)
         # Save checkpoint if the current loss is better than the best loss so far
@@ -188,12 +192,14 @@ with torch.no_grad():
     for i, x in val_loop:
         # Forward pass
         x = torch.tensor(x, dtype=data_type).to(DEVICE).view(x.shape[0], 1, NUM_OF_FRAMES, INPUT_DIMENSION, INPUT_DIMENSION)
-        x_reconstructed, mu, sigma = model.forward(x)
+        x_reconstructed, mu, logvar = model.forward(x)
 
 
 reconstruction_loss = loss_function(x_reconstructed, x)
-print(f"reconstruction loss: {( ALPHA_VALUE * reconstruction_loss) / x.size(0)}")
-KL_divergence = -torch.sum(1 + torch.log(sigma.pow(2)) - mu.pow(2) - sigma.pow(2))
+print(f"reconstruction loss: {( ALPHA_VALUE * reconstruction_loss)}")
+#KL_divergence = -0.5 * torch.sum(1 + torch.log(sigma.pow(2)) - mu.pow(2) - sigma.pow(2))
+# KL Divergence loss
+KL_divergence = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
 print(f"KL divergence: {(BETA_VALUE * KL_divergence) / x.size(0)}")
 loss = ( ALPHA_VALUE * reconstruction_loss) + (BETA_VALUE * KL_divergence)
 print(f"loss: {loss / x.size(0)}")

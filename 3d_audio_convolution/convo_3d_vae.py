@@ -39,7 +39,7 @@ class Convo3DVAE(nn.Module):
         self.hidden_layer_encoder2 = nn.Linear(in_features=linear_input_dimensions, out_features=hidden_dimensions2)
         self.hidden_layer_encoder3 = nn.Linear(in_features=hidden_dimensions2, out_features=hidden_dimensions3)
         self.mu_layer = nn.Linear(in_features=hidden_dimensions3, out_features=latent_space_dimensions)
-        self.sigma_layer = nn.Linear(in_features=hidden_dimensions3, out_features=latent_space_dimensions)
+        self.logvar_layer = nn.Linear(in_features=hidden_dimensions3, out_features=latent_space_dimensions)
 
         # Decoder
         self.hidden_layer_decoder = nn.Linear(in_features=latent_space_dimensions, out_features=hidden_dimensions3)
@@ -64,8 +64,8 @@ class Convo3DVAE(nn.Module):
         x = self.relu_activation(self.hidden_layer_encoder2(x))
         x = self.relu_activation(self.hidden_layer_encoder3(x))
         mu = self.mu_layer(x)
-        sigma = torch.sqrt(torch.exp(self.sigma_layer(x)))
-        return mu, sigma
+        logvar = self.logvar_layer(x)
+        return mu, logvar
 
     def decode(self, z):
         x = self.relu_activation(self.hidden_layer_decoder(z))
@@ -81,12 +81,13 @@ class Convo3DVAE(nn.Module):
         print("x.shape8", x_reconstructed.shape) if self.debug else None
         return x_reconstructed
 
-    def reparameterize(self, mu, sigma):
-        epsilon = torch.randn_like(sigma)
-        return mu + epsilon * sigma
+    def reparameterize(self, mu, logvar):
+        std = torch.exp(0.5*logvar)
+        eps = torch.randn_like(std)
+        return mu + eps*std
 
     def forward(self, x):
-        mu, sigma = self.encode(x)
-        z_reparametrize = self.reparameterize(mu, sigma)
+        mu, logvar = self.encode(x)
+        z_reparametrize = self.reparameterize(mu, logvar)
         x_reconstructed = self.decode(z_reparametrize)
-        return x_reconstructed, mu, sigma
+        return x_reconstructed, mu, logvar
