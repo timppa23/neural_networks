@@ -38,7 +38,7 @@ for song_id in range(number_of_training_songs + number_of_validation_songs + num
 
 
 for song in resampled_songs:
-    segments = segment_audio_return(song[0], song[1], segment_length_secs, INPUT_DIMENSION)
+    segments = segment_audio_return(song[0], song[1], segment_length_secs, INPUT_DIMENSION, 5)
     song_segments.append(np.array(segments)[:10])  # Append individual segments
 
 print(f"song_segments count: {len(song_segments)}")
@@ -49,7 +49,7 @@ validation_data = song_segments[number_of_training_songs * segment_to_song_coeff
 test_data = song_segments[(number_of_training_songs + number_of_validation_songs) * segment_to_song_coefficient:]
 
 resampled_songs = []
-song_segments = []
+# song_segments = []
 
 # %% Create DataLoader for training
 
@@ -57,9 +57,9 @@ song_segments = []
 BATCH_SIZE = 32
 NUM_OF_FRAMES = train_data[0].shape[0]
 HIDDEN_DIMENSIONS1 = 8400
-HIDDEN_DIMENSIONS2 = 5400
-HIDDEN_DIMENSIONS3 = 3400
-LATENT_SPACE_DIMENSIONS = 1400
+HIDDEN_DIMENSIONS2 = 4400
+HIDDEN_DIMENSIONS3 = 2800
+LATENT_SPACE_DIMENSIONS = 840
 LEARNING_RATE = 1e-5
 NUMBER_OF_EPOCHS = 500
 BETA_VALUE = 1
@@ -72,8 +72,7 @@ test_loader = DataLoader(test_data, batch_size=BATCH_SIZE, shuffle=False)
 model = Convo3DVAE(INPUT_DIMENSION, NUM_OF_FRAMES, HIDDEN_DIMENSIONS1, HIDDEN_DIMENSIONS2, HIDDEN_DIMENSIONS3, LATENT_SPACE_DIMENSIONS).to(DEVICE)
 
 # Convert the model's parameters to float16
-#model = model.half()
-data_type = torch.float32
+# model = model.half()
 optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 loss_function = nn.MSELoss()
 
@@ -126,7 +125,7 @@ for epoch in range(NUMBER_OF_EPOCHS):
         
         total_train_loss += loss.item()
         loop.set_description(f"Epoch train [{epoch+1}/{NUMBER_OF_EPOCHS}]")
-        loop.set_postfix(loss=total_train_loss / (i + 1), KL_divergence={(BETA_VALUE * KL_divergence)}, reconstruction_loss= {(ALPHA_VALUE * reconstruction_loss.item())})
+        loop.set_postfix(loss=total_train_loss / (i + 1), KL_divergence={(BETA_VALUE * KL_divergence.item())}, reconstruction_loss= {(ALPHA_VALUE * reconstruction_loss.item())})
 
 
     if epoch % 10 == 0:
@@ -134,8 +133,8 @@ for epoch in range(NUMBER_OF_EPOCHS):
         # print(f"x_reconstructed values: {x_reconstructed[0]}")
         print(f"mu values: {calculate_grouped_value_count(mu[0])}")
         print(f"sigma values: {calculate_grouped_value_count(logvar[0])}")
-        print(f" grouped values x: {calculate_grouped_value_count(x[0])}")
-        print(f" grouped values x_reconstructed: {calculate_grouped_value_count(x_reconstructed[0])}")
+        print(f"grouped values x: {calculate_grouped_value_count(x[0])}")
+        print(f"grouped values x_reconstructed: {calculate_grouped_value_count(x_reconstructed[0])}")
         torch.save({
             'epoch': 0,
             'model_state_dict': model.state_dict(),
@@ -163,7 +162,7 @@ for epoch in range(NUMBER_OF_EPOCHS):
 
             total_val_loss += loss.item()
             val_loop.set_description(f"Epoch validation [{epoch+1}/{NUMBER_OF_EPOCHS}]")
-            val_loop.set_postfix(loss=total_val_loss / (i + 1), KL_divergence= {(BETA_VALUE * KL_divergence)}, reconstruction_loss= {(ALPHA_VALUE * reconstruction_loss.item())})
+            val_loop.set_postfix(loss=total_val_loss / (i + 1), KL_divergence= {(BETA_VALUE * KL_divergence.item())}, reconstruction_loss= {(ALPHA_VALUE * reconstruction_loss.item())})
     
         avg_val_loss = total_val_loss / len(validation_loader)
         # Save checkpoint if the current loss is better than the best loss so far
@@ -191,7 +190,7 @@ with torch.no_grad():
     val_loop = tqdm(enumerate(test_loader), total=len(test_loader))
     for i, x in val_loop:
         # Forward pass
-        x = torch.tensor(x, dtype=data_type).to(DEVICE).view(x.shape[0], 1, NUM_OF_FRAMES, INPUT_DIMENSION, INPUT_DIMENSION)
+        x = x.clone().detach().to(DEVICE).view(x.shape[0], 1, NUM_OF_FRAMES, INPUT_DIMENSION, INPUT_DIMENSION)
         x_reconstructed, mu, logvar = model.forward(x)
 
 
@@ -200,9 +199,14 @@ print(f"reconstruction loss: {( ALPHA_VALUE * reconstruction_loss)}")
 #KL_divergence = -0.5 * torch.sum(1 + torch.log(sigma.pow(2)) - mu.pow(2) - sigma.pow(2))
 # KL Divergence loss
 KL_divergence = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
-print(f"KL divergence: {(BETA_VALUE * KL_divergence) / x.size(0)}")
+print(f"KL divergence: {(BETA_VALUE * KL_divergence)}")
 loss = ( ALPHA_VALUE * reconstruction_loss) + (BETA_VALUE * KL_divergence)
-print(f"loss: {loss / x.size(0)}")
+print(f"loss: {loss}")
+
+print(f"mu values: {calculate_grouped_value_count(mu[0])}")
+print(f"sigma values: {calculate_grouped_value_count(logvar[0])}")
+print(f"grouped values x: {calculate_grouped_value_count(x[0])}")
+print(f"grouped values x_reconstructed: {calculate_grouped_value_count(x_reconstructed[0])}")
 
 
 #%%
@@ -211,7 +215,7 @@ reconstructed_waveform = x_reconstructed.cpu().numpy().reshape(-1)
 validation_waveform =  x.cpu().numpy().reshape(-1)
 
 # Save the reconstructed audio as a .wav file
-write_example_file('1', reconstructed_waveform, validation_waveform, lower_sample_rate)
+write_example_file('3', reconstructed_waveform, validation_waveform, lower_sample_rate)
 
  #  %%
  

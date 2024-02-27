@@ -75,7 +75,7 @@ def resample(audio_data, sample_rate, lower_sample_rate):
         return (audio_data, lower_sample_rate)
 
 
-def segment_audio_return(audio_data, sample_rate, segment_length_secs, input_dimension):
+def segment_audio_return(audio_data, sample_rate, segment_length_secs, input_dimension, round_to=5):
     # Convert stereo to mono if needed
     if len(audio_data.shape) > 1 and audio_data.shape[0] == 2:
         audio_data = audio_data.mean(axis=0)
@@ -91,6 +91,7 @@ def segment_audio_return(audio_data, sample_rate, segment_length_secs, input_dim
         start = i * segment_length_samples
         end = start + segment_length_samples
         segment = audio_data[start:end]
+        # segment = [round(float(num), round_to) for num in segment.numpy()]
 
         # Reshape the segment into a 2D matrix 
         reshaped_segment = np.reshape(segment.numpy(), (input_dimension, input_dimension))
